@@ -3653,6 +3653,17 @@ body[data-theme="special"] #pixelMascot {
   .pixel-mascot-bubble {
     width: 260px;
   }
+  .chat-fab {
+    bottom: 74px;
+    left: 14px;
+    right: auto;
+  }
+  .chat-popup {
+    bottom: 134px;
+    left: 14px;
+    right: auto;
+    max-width: calc(100vw - 28px);
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -4658,8 +4669,9 @@ body[data-theme="special"] .debt-tab.active {
 
 .chat-fab {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  bottom: 20px;
+  left: 20px;
+  right: auto;
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -4705,8 +4717,9 @@ body[data-theme="special"] .debt-tab.active {
 /* Chat Popup Window */
 .chat-popup {
   position: fixed;
-  bottom: 88px;
-  right: 24px;
+  bottom: 80px;
+  left: 20px;
+  right: auto;
   width: 360px;
   max-width: calc(100vw - 32px);
   height: 480px;
@@ -5187,19 +5200,23 @@ body[data-theme="special"] .debt-tab.active {
 }
 
 /* Special Mode Pixel Overrides for Live Chat */
-body[data-theme="special"] .chat-fab {
+body[data-theme="special"] .chat-fab,
+body.special-mode .chat-fab {
   border-radius: 0;
   background: #00ff41;
   color: #0a0014;
   border: 2px solid #000;
   box-shadow: 3px 3px 0 #002a10, 0 0 12px rgba(0, 255, 65, 0.4);
+  z-index: 9998;
 }
 
-body[data-theme="special"] .chat-popup {
+body[data-theme="special"] .chat-popup,
+body.special-mode .chat-popup {
   border-radius: 0;
   border: 3px solid #7b61ff;
   background: #0d001f;
   box-shadow: 6px 6px 0 #3d1a6e;
+  z-index: 9999;
 }
 
 body[data-theme="special"] .chat-header {

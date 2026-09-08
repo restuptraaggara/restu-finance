@@ -82,29 +82,56 @@ export function playRetroBeep(type = 'coin') {
 // RESTU FINANCE BGM — YouTube Background Music Engine
 // ============================================================
 export const BGM_PLAYLIST = [
-  { id: 'uLF1lW3Ffrg', title: "Mia & Seb's Theme", artist: "La La Land (Jacob's Piano)" },
-  { id: 'nNUVK7-qj3k', title: "City of Stars", artist: "La La Land (Pianella Piano)" },
-  { id: 'Sdd_EvDJcqw', title: "golden hour", artist: "JVKE (Piano & Violin Cover)" },
-  { id: 'NPBCbTZWnq0', title: "River Flows in You", artist: "Yiruma Piano" }
+  { id: 'local_bgm', isLocal: true, src: '/audio/bgm.mp3', title: "Restu Ambient Melody", artist: "Restu Finance Official BGM" },
+  { id: 'uLF1lW3Ffrg', isLocal: false, title: "Mia & Seb's Theme", artist: "La La Land (Jacob's Piano)" },
+  { id: 'nNUVK7-qj3k', isLocal: false, title: "City of Stars", artist: "La La Land (Pianella Piano)" },
+  { id: 'Sdd_EvDJcqw', isLocal: false, title: "golden hour", artist: "JVKE (Piano & Violin Cover)" },
+  { id: 'NPBCbTZWnq0', isLocal: false, title: "River Flows in You", artist: "Yiruma Piano" }
 ];
 
 export let ytPlayer = null;
 export let ytReady = false;
 export let ytPlayerReady = false;
-export let bgmMuted = localStorage.getItem('arus_bgm_muted') === 'true';
+export let bgmMuted = localStorage.getItem('arus_bgm_muted') === 'false' ? false : true;
 export let bgmTrackIndex = 0;
 export let bgmActive = false;
 export let userInteracted = false;
 export let bgmProgressInterval = null;
+export let localAudio = null;
 
 export function isAuth() {
   return Boolean(window.isAuthenticated);
 }
 
+// Local HTML5 Audio Instance for /audio/bgm.mp3 with /audio/bgm.wav fallback
+export function getLocalAudio() {
+  if (!localAudio) {
+    localAudio = new Audio('/audio/bgm.mp3');
+    localAudio.loop = true;
+    localAudio.preload = 'auto';
+
+    localAudio.addEventListener('ended', () => {
+      nextTrack();
+    });
+
+    localAudio.addEventListener('error', (e) => {
+      console.error('Local BGM audio error:', localAudio.error || e);
+      // Fallback to .wav if .mp3 cannot be decoded
+      if (localAudio.src && localAudio.src.includes('bgm.mp3')) {
+        localAudio.src = '/audio/bgm.wav';
+        if (bgmActive && !bgmMuted) {
+          localAudio.play().catch(wavErr => console.error('Local WAV fallback error:', wavErr));
+        }
+      }
+    });
+  }
+  return localAudio;
+}
+
 // Called automatically by YouTube IFrame API once script loads
 window.onYouTubeIframeAPIReady = function () {
   ytReady = true;
-  if (isAuth()) {
+  if (isAuth() && !BGM_PLAYLIST[bgmTrackIndex].isLocal) {
     _createPlayer(BGM_PLAYLIST[bgmTrackIndex].id);
   }
 };
@@ -114,18 +141,19 @@ export function _createPlayer(videoId) {
   const wrap = document.getElementById('ytPlayerWrap');
   if (!wrap) return;
 
-  // Active in viewport so browser doesn't throttle audio
   wrap.style.cssText = 'position:fixed;bottom:8px;right:8px;width:200px;height:120px;opacity:0.001;pointer-events:none;z-index:-999;overflow:hidden;';
 
   if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
     try {
       ytPlayer.loadVideoById(videoId);
-      if (!bgmMuted) {
+      if (!bgmMuted && bgmActive) {
         ytPlayer.unMute();
         ytPlayer.setVolume(85);
         ytPlayer.playVideo();
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('YouTube loadVideoById failed:', e);
+    }
     return;
   }
 
@@ -137,7 +165,7 @@ export function _createPlayer(videoId) {
       videoId: videoId,
       playerVars: {
         enablejsapi: 1,
-        autoplay: 1,
+        autoplay: bgmActive && !bgmMuted ? 1 : 0,
         controls: 0,
         disablekb: 1,
         fs: 0,
@@ -151,7 +179,7 @@ export function _createPlayer(videoId) {
         onReady: (e) => {
           ytPlayerReady = true;
           e.target.setVolume(85);
-          if (bgmMuted) {
+          if (bgmMuted || !bgmActive) {
             e.target.mute();
           } else {
             e.target.unMute();
@@ -163,31 +191,38 @@ export function _createPlayer(videoId) {
         },
         onStateChange: (e) => {
           if (e.data === YT.PlayerState.ENDED) {
-            // Loop automatically back to the beginning track when playlist ends
             nextTrack();
           }
           updateMusicPlayerUI();
           updateMusicBtn();
         },
         onError: (err) => {
-          console.warn('YouTube player warning:', err);
-          // Automatically skip to next track on error
+          console.error('YouTube player error:', err);
           nextTrack();
         }
       }
     });
   } catch (e) {
-    console.warn('YT.Player init failed:', e);
+    console.error('YT.Player init failed:', e);
   }
 }
 
 export function startProgressTracking() {
   if (bgmProgressInterval) clearInterval(bgmProgressInterval);
   bgmProgressInterval = setInterval(() => {
-    if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
     try {
-      const current = ytPlayer.getCurrentTime() || 0;
-      const total = ytPlayer.getDuration() || 0;
+      const track = BGM_PLAYLIST[bgmTrackIndex];
+      let current = 0;
+      let total = 0;
+
+      if (track && track.isLocal && localAudio) {
+        current = localAudio.currentTime || 0;
+        total = localAudio.duration || 0;
+      } else if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+        current = ytPlayer.getCurrentTime() || 0;
+        total = ytPlayer.getDuration() || 0;
+      }
+
       const progressFill = document.getElementById('playerProgressFill');
       const timeCur = document.getElementById('bgmCurrentTime') || document.getElementById('playerTimeCurrent');
       const timeTot = document.getElementById('bgmDuration') || document.getElementById('playerTimeTotal');
@@ -216,22 +251,84 @@ export function playTrack(index) {
   if (!isAuth()) return;
   bgmTrackIndex = (index + BGM_PLAYLIST.length) % BGM_PLAYLIST.length;
   const track = BGM_PLAYLIST[bgmTrackIndex];
-  if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
-    try {
-      ytPlayer.loadVideoById(track.id);
-      if (!bgmMuted) {
-        ytPlayer.unMute();
-        ytPlayer.setVolume(85);
-        ytPlayer.playVideo();
+
+  stopRetroSynthTrack();
+
+  if (track.isLocal) {
+    // Stop YouTube video if active
+    if (ytPlayer && typeof ytPlayer.pauseVideo === 'function') {
+      try { ytPlayer.pauseVideo(); } catch (e) {}
+    }
+
+    const audio = getLocalAudio();
+    audio.currentTime = 0;
+    audio.muted = bgmMuted;
+    audio.volume = bgmMuted ? 0 : 0.85;
+
+    if (!bgmMuted) {
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          bgmActive = true;
+          startProgressTracking();
+          updateMusicPlayerUI();
+          updateMusicBtn();
+        }).catch(err => {
+          console.error('BGM play failed:', err);
+          // Fallback un-mute and retry
+          try {
+            audio.muted = false;
+            audio.volume = 0.85;
+            audio.play().then(() => {
+              bgmActive = true;
+              bgmMuted = false;
+              startProgressTracking();
+              updateMusicPlayerUI();
+              updateMusicBtn();
+            }).catch(retryErr => {
+              console.error('BGM retry failed, falling back to Retro Synth:', retryErr);
+              playRetroSynthTrack(1);
+            });
+          } catch (e) {
+            console.error('BGM fallback exception:', e);
+            playRetroSynthTrack(1);
+          }
+        });
       }
-    } catch (e) {}
+    } else {
+      bgmActive = false;
+    }
   } else {
-    _createPlayer(track.id);
+    // YouTube track
+    if (localAudio) {
+      try { localAudio.pause(); } catch (e) {}
+    }
+    if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
+      try {
+        ytPlayer.loadVideoById(track.id);
+        if (!bgmMuted) {
+          ytPlayer.unMute();
+          ytPlayer.setVolume(85);
+          ytPlayer.playVideo();
+          bgmActive = true;
+        } else {
+          ytPlayer.mute();
+          bgmActive = false;
+        }
+      } catch (err) {
+        console.error('YouTube playTrack failed:', err);
+        playTrack(0); // fallback to local track
+        return;
+      }
+    } else {
+      _createPlayer(track.id);
+    }
   }
-  bgmActive = true;
+
+  startProgressTracking();
   updateMusicPlayerUI();
   updateMusicBtn();
-  if (typeof window.toast === 'function') {
+  if (typeof window.toast === 'function' && !bgmMuted) {
     window.toast(`🎵 Memutar: ${track.title}`);
   }
 }
@@ -247,76 +344,163 @@ export function prevTrack() {
 }
 
 export function rewind10s() {
-  if (!isAuth() || !ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
-  try {
-    const cur = ytPlayer.getCurrentTime() || 0;
-    ytPlayer.seekTo(Math.max(0, cur - 10), true);
-  } catch (e) {}
+  if (!isAuth()) return;
+  const track = BGM_PLAYLIST[bgmTrackIndex];
+  if (track && track.isLocal && localAudio) {
+    localAudio.currentTime = Math.max(0, (localAudio.currentTime || 0) - 10);
+  } else if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+    try {
+      const cur = ytPlayer.getCurrentTime() || 0;
+      ytPlayer.seekTo(Math.max(0, cur - 10), true);
+    } catch (e) {}
+  }
 }
 
 export function forward10s() {
-  if (!isAuth() || !ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
-  try {
-    const cur = ytPlayer.getCurrentTime() || 0;
-    const dur = ytPlayer.getDuration() || 0;
-    ytPlayer.seekTo(Math.min(dur, cur + 10), true);
-  } catch (e) {}
+  if (!isAuth()) return;
+  const track = BGM_PLAYLIST[bgmTrackIndex];
+  if (track && track.isLocal && localAudio) {
+    const dur = localAudio.duration || 0;
+    localAudio.currentTime = Math.min(dur, (localAudio.currentTime || 0) + 10);
+  } else if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+    try {
+      const cur = ytPlayer.getCurrentTime() || 0;
+      const dur = ytPlayer.getDuration() || 0;
+      ytPlayer.seekTo(Math.min(dur, cur + 10), true);
+    } catch (e) {}
+  }
 }
 
 export function replayCurrentTrack() {
-  if (!isAuth() || !ytPlayer || typeof ytPlayer.seekTo !== 'function') return;
-  try {
-    ytPlayer.seekTo(0, true);
-    if (!bgmMuted) ytPlayer.playVideo();
-  } catch (e) {}
+  if (!isAuth()) return;
+  const track = BGM_PLAYLIST[bgmTrackIndex];
+  if (track && track.isLocal && localAudio) {
+    localAudio.currentTime = 0;
+    if (!bgmMuted) {
+      localAudio.play().catch(err => console.error('Local BGM replay error:', err));
+    }
+  } else if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
+    try {
+      ytPlayer.seekTo(0, true);
+      if (!bgmMuted) ytPlayer.playVideo();
+    } catch (e) {}
+  }
 }
 
 export function togglePlayPause() {
   if (!isAuth()) return;
-  unlockAudio();
-  if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') {
-    playTrack(bgmTrackIndex);
+  const track = BGM_PLAYLIST[bgmTrackIndex];
+
+  if (isRetroSynthActive) {
+    stopRetroSynthTrack();
+    bgmActive = false;
+    updateMusicPlayerUI();
+    updateMusicBtn();
     return;
   }
-  try {
-    const state = ytPlayer.getPlayerState();
-    if (state === YT.PlayerState.PLAYING) {
-      ytPlayer.pauseVideo();
-      bgmActive = false;
-    } else {
-      ytPlayer.unMute();
+
+  if (track && track.isLocal) {
+    const audio = getLocalAudio();
+    if (audio.paused || bgmMuted || !bgmActive) {
       bgmMuted = false;
       localStorage.setItem('arus_bgm_muted', 'false');
-      ytPlayer.playVideo();
-      bgmActive = true;
+      audio.muted = false;
+      audio.volume = 0.85;
+      const p = audio.play();
+      if (p) {
+        p.then(() => {
+          bgmActive = true;
+          updateMusicPlayerUI();
+          updateMusicBtn();
+        }).catch(err => {
+          console.error('BGM play failed on togglePlayPause:', err);
+          playRetroSynthTrack(1);
+        });
+      }
+    } else {
+      audio.pause();
+      bgmActive = false;
     }
-  } catch (e) {
-    playTrack(bgmTrackIndex);
+  } else {
+    // YouTube track
+    if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') {
+      bgmMuted = false;
+      localStorage.setItem('arus_bgm_muted', 'false');
+      playTrack(bgmTrackIndex);
+      return;
+    }
+    try {
+      const state = ytPlayer.getPlayerState();
+      if (state === YT.PlayerState.PLAYING && !bgmMuted) {
+        ytPlayer.pauseVideo();
+        bgmActive = false;
+      } else {
+        ytPlayer.unMute();
+        ytPlayer.setVolume(85);
+        bgmMuted = false;
+        localStorage.setItem('arus_bgm_muted', 'false');
+        ytPlayer.playVideo();
+        bgmActive = true;
+      }
+    } catch (e) {
+      console.error('YouTube togglePlayPause error:', e);
+      playTrack(0);
+    }
   }
+
   updateMusicPlayerUI();
   updateMusicBtn();
 }
 
 export function toggleMute() {
   if (!isAuth()) return;
-  unlockAudio();
   bgmMuted = !bgmMuted;
   localStorage.setItem('arus_bgm_muted', String(bgmMuted));
 
-  if (ytPlayer && ytPlayerReady) {
-    try {
-      if (bgmMuted) {
-        ytPlayer.mute();
-        bgmActive = false;
-      } else {
+  const track = BGM_PLAYLIST[bgmTrackIndex];
+
+  if (bgmMuted) {
+    if (localAudio) {
+      localAudio.muted = true;
+      localAudio.volume = 0;
+    }
+    if (ytPlayer && ytPlayerReady && typeof ytPlayer.mute === 'function') {
+      try { ytPlayer.mute(); } catch (e) {}
+    }
+    if (isRetroSynthActive) {
+      stopRetroSynthTrack();
+    }
+    bgmActive = false;
+  } else {
+    if (track && track.isLocal) {
+      const audio = getLocalAudio();
+      audio.muted = false;
+      audio.volume = 0.85;
+      const p = audio.play();
+      if (p) {
+        p.then(() => {
+          bgmActive = true;
+          startProgressTracking();
+          updateMusicBtn();
+          updateMusicPlayerUI();
+        }).catch(err => {
+          console.error('BGM play failed on unmute:', err);
+          playRetroSynthTrack(1);
+        });
+      }
+    } else if (ytPlayer && ytPlayerReady && typeof ytPlayer.unMute === 'function') {
+      try {
         ytPlayer.unMute();
         ytPlayer.setVolume(85);
         ytPlayer.playVideo();
         bgmActive = true;
+      } catch (err) {
+        console.error('YouTube unmute failed:', err);
+        playTrack(0);
       }
-    } catch (e) {}
-  } else {
-    _createPlayer(BGM_PLAYLIST[bgmTrackIndex].id);
+    } else {
+      playTrack(bgmTrackIndex);
+    }
   }
 
   updateMusicBtn();
@@ -330,13 +514,31 @@ export function toggleMute() {
 
 export function startBGM() {
   if (!isAuth() || bgmMuted) return;
-  if (ytPlayer && ytPlayerReady) {
+  const track = BGM_PLAYLIST[bgmTrackIndex];
+  if (track && track.isLocal) {
+    const audio = getLocalAudio();
+    audio.muted = false;
+    audio.volume = 0.85;
+    const p = audio.play();
+    if (p) {
+      p.then(() => {
+        bgmActive = true;
+        startProgressTracking();
+        updateMusicBtn();
+        updateMusicPlayerUI();
+      }).catch(err => {
+        console.error('startBGM local audio failed:', err);
+      });
+    }
+  } else if (ytPlayer && ytPlayerReady) {
     try {
       ytPlayer.unMute();
       ytPlayer.setVolume(85);
       ytPlayer.playVideo();
       bgmActive = true;
-    } catch (e) {}
+    } catch (e) {
+      console.error('startBGM YT failed:', e);
+    }
   } else if (!ytPlayer) {
     _createPlayer(BGM_PLAYLIST[bgmTrackIndex].id);
   }
@@ -349,14 +551,17 @@ export function updateMusicBtn() {
   const musicIcon = document.getElementById('musicBtnIcon');
   if (!musicBtn) return;
 
-  if (bgmMuted) {
-    musicBtn.classList.remove('active');
-    if (musicIcon) musicIcon.textContent = '🔇';
-    musicBtn.title = window.state?.user?.language === 'en' ? 'Unmute BGM (Music Muted)' : 'Nyalakan Musik BGM (Sedang Bisu)';
-  } else {
-    musicBtn.classList.add('active');
+  const isPlaying = bgmActive && !bgmMuted;
+
+  if (isPlaying) {
+    musicBtn.classList.add('active', 'music-playing');
+    musicBtn.classList.remove('music-pending');
     if (musicIcon) musicIcon.textContent = '♪';
     musicBtn.title = window.state?.user?.language === 'en' ? 'Mute BGM (Music Playing)' : 'Matikan Musik BGM (Sedang Memutar)';
+  } else {
+    musicBtn.classList.remove('active', 'music-playing', 'music-pending');
+    if (musicIcon) musicIcon.textContent = '🔇';
+    musicBtn.title = window.state?.user?.language === 'en' ? 'Play BGM (Music Muted)' : 'Nyalakan Musik BGM (Sedang Bisu)';
   }
 }
 
@@ -472,9 +677,11 @@ export function updateMusicPlayerUI() {
   let isPlaying = false;
   if (isRetroSynthActive) {
     isPlaying = true;
+  } else if (current && current.isLocal && localAudio) {
+    isPlaying = !localAudio.paused && !bgmMuted;
   } else if (ytPlayer && typeof ytPlayer.getPlayerState === 'function') {
     try {
-      isPlaying = ytPlayer.getPlayerState() === YT.PlayerState.PLAYING;
+      isPlaying = ytPlayer.getPlayerState() === YT.PlayerState.PLAYING && !bgmMuted;
     } catch (e) {}
   }
 
@@ -486,18 +693,23 @@ export function updateMusicPlayerUI() {
   }
 
   if (playlistItemsEl) {
-    const ytItems = BGM_PLAYLIST.map((item, idx) => `
-      <div class="playlist-item ${(!isRetroSynthActive && idx === bgmTrackIndex) ? 'active' : ''}" onclick="window.stopRetroSynthTrack(); window.playTrack(${idx})">
-        <div class="playlist-item-left">
-          <span class="playlist-item-num">${(!isRetroSynthActive && idx === bgmTrackIndex) ? '▶' : (idx + 1)}</span>
-          <div>
-            <div class="playlist-item-title">${item.title}</div>
-            <div class="playlist-item-artist">${item.artist}</div>
+    const playlistItems = BGM_PLAYLIST.map((item, idx) => {
+      const isCurrent = !isRetroSynthActive && idx === bgmTrackIndex;
+      const isCurrentPlaying = isCurrent && isPlaying;
+      const icon = item.isLocal ? '🎵' : '🎹';
+      return `
+        <div class="playlist-item ${isCurrent ? 'active' : ''}" onclick="window.stopRetroSynthTrack(); window.playTrack(${idx})">
+          <div class="playlist-item-left">
+            <span class="playlist-item-num">${isCurrentPlaying ? '▶' : icon}</span>
+            <div>
+              <div class="playlist-item-title">${item.title}</div>
+              <div class="playlist-item-artist">${item.artist}</div>
+            </div>
           </div>
+          ${isCurrentPlaying ? '<span class="playlist-playing-badge">PLAYING</span>' : ''}
         </div>
-        ${(!isRetroSynthActive && idx === bgmTrackIndex) ? '<span class="playlist-playing-badge">PLAYING</span>' : ''}
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     const retroItems = RETRO_SYNTH_TRACKS.map((t, idx) => `
       <div class="playlist-item ${(isRetroSynthActive && idx === retroSynthIndex) ? 'active' : ''}" onclick="window.playRetroSynthTrack(${idx})">
@@ -513,8 +725,8 @@ export function updateMusicPlayerUI() {
     `).join('');
 
     playlistItemsEl.innerHTML = `
-      <div class="playlist-section-label" style="font-size:10px;font-weight:700;color:var(--muted);margin:6px 0 4px;letter-spacing:1px;">🎹 PIANO & ACOUSTIC (YOUTUBE BGM)</div>
-      ${ytItems}
+      <div class="playlist-section-label" style="font-size:10px;font-weight:700;color:var(--muted);margin:6px 0 4px;letter-spacing:1px;">🎵 RESTU BGM & PIANO PLAYLIST</div>
+      ${playlistItems}
       <div class="playlist-section-label" style="font-size:10px;font-weight:700;color:var(--green, #d7f56f);margin:12px 0 4px;letter-spacing:1px;">👾 8-BIT RETRO SYNTH (WEB AUDIO API)</div>
       ${retroItems}
     `;
@@ -522,11 +734,8 @@ export function updateMusicPlayerUI() {
 }
 
 export function unlockAudio() {
-  if (!isAuth()) return;
+  // Kept for backward compatibility but does not auto-play sound unprompted
   userInteracted = true;
-  if (!bgmMuted && (!ytPlayer || !bgmActive)) {
-    startBGM();
-  }
 }
 
 export function stopAudio() {
@@ -536,10 +745,11 @@ export function stopAudio() {
     clearInterval(bgmProgressInterval);
     bgmProgressInterval = null;
   }
+  if (localAudio) {
+    try { localAudio.pause(); } catch (e) {}
+  }
   if (ytPlayer && typeof ytPlayer.pauseVideo === 'function') {
-    try {
-      ytPlayer.pauseVideo();
-    } catch (e) {}
+    try { ytPlayer.pauseVideo(); } catch (e) {}
   }
   const progressFill = document.getElementById('playerProgressFill');
   if (progressFill) progressFill.style.width = '0%';
@@ -557,16 +767,7 @@ export const stopBGM = stopAudio;
 
 export function initAudioAfterLogin() {
   if (!isAuth()) return;
-  if (ytReady && !ytPlayer) {
-    _createPlayer(BGM_PLAYLIST[bgmTrackIndex].id);
-  } else if (ytPlayer && ytPlayerReady && !bgmMuted) {
-    try {
-      ytPlayer.unMute();
-      ytPlayer.setVolume(85);
-      ytPlayer.playVideo();
-      bgmActive = true;
-    } catch (e) {}
-  }
+  // Browser policy compliance: do not autoplay unprompted on login
   updateMusicBtn();
   updateMusicPlayerUI();
 }
@@ -577,17 +778,86 @@ export function initAudioUI() {
   const musicPlayerPanelEl = document.getElementById('musicPlayerPanel');
   const closeMusicPanelBtnEl = document.getElementById('closeMusicPanelBtn');
 
-  if (musicBtnEl && musicPlayerPanelEl) {
+  if (musicBtnEl) {
     musicBtnEl.addEventListener('click', (e) => {
       e.stopPropagation();
       if (!isAuth()) return;
-      const isHidden = musicPlayerPanelEl.style.display === 'none';
-      if (isHidden) {
-        updateMusicPlayerUI();
-        musicPlayerPanelEl.style.display = 'block';
+      userInteracted = true;
+
+      // When clicking the BGM toggle button:
+      if (bgmMuted || !bgmActive) {
+        // Fallback un-mute and play
+        bgmMuted = false;
+        localStorage.setItem('arus_bgm_muted', 'false');
+
+        const track = BGM_PLAYLIST[bgmTrackIndex];
+        if (track && track.isLocal) {
+          const audio = getLocalAudio();
+          audio.muted = false;
+          audio.volume = 0.85;
+          const p = audio.play();
+          if (p) {
+            p.then(() => {
+              bgmActive = true;
+              startProgressTracking();
+              updateMusicBtn();
+              updateMusicPlayerUI();
+            }).catch(err => {
+              console.error('BGM play failed on musicBtn click:', err);
+              // Fallback un-mute retry
+              try {
+                audio.muted = false;
+                audio.volume = 0.85;
+                audio.play().then(() => {
+                  bgmActive = true;
+                  bgmMuted = false;
+                  startProgressTracking();
+                  updateMusicBtn();
+                  updateMusicPlayerUI();
+                }).catch(retryErr => {
+                  console.error('BGM play retry failed, falling back to Retro Synth:', retryErr);
+                  playRetroSynthTrack(1);
+                });
+              } catch (e2) {
+                console.error('BGM fallback exception:', e2);
+                playRetroSynthTrack(1);
+              }
+            });
+          }
+        } else if (ytPlayer && ytPlayerReady && typeof ytPlayer.unMute === 'function') {
+          try {
+            ytPlayer.unMute();
+            ytPlayer.setVolume(85);
+            ytPlayer.playVideo();
+            bgmActive = true;
+          } catch (ytErr) {
+            console.error('YouTube play failed on musicBtn click:', ytErr);
+            playTrack(0);
+          }
+        } else {
+          playTrack(bgmTrackIndex);
+        }
+
+        if (typeof window.toast === 'function') {
+          const en = window.state?.user?.language === 'en';
+          window.toast(en ? '🔊 BGM Started' : '🔊 Musik BGM Diputar');
+        }
       } else {
-        musicPlayerPanelEl.style.display = 'none';
+        // If it was already active, toggle mute/pause
+        togglePlayPause();
       }
+
+      // Also toggle player panel visibility if available
+      if (musicPlayerPanelEl) {
+        const isHidden = musicPlayerPanelEl.style.display === 'none';
+        if (isHidden && bgmActive) {
+          updateMusicPlayerUI();
+          musicPlayerPanelEl.style.display = 'block';
+        }
+      }
+
+      updateMusicBtn();
+      updateMusicPlayerUI();
     });
   }
 
@@ -621,12 +891,17 @@ export function initAudioUI() {
   const seekSlider = document.getElementById('bgmProgressBar') || document.getElementById('playerSeekSlider');
   if (seekSlider) {
     seekSlider.oninput = () => {
-      if (!isAuth() || !ytPlayer || typeof ytPlayer.seekTo !== 'function') return;
-      try {
-        const total = ytPlayer.getDuration() || 0;
-        const targetSec = (seekSlider.value / 100) * total;
-        ytPlayer.seekTo(targetSec, true);
-      } catch (e) {}
+      if (!isAuth()) return;
+      const track = BGM_PLAYLIST[bgmTrackIndex];
+      if (track && track.isLocal && localAudio && localAudio.duration) {
+        localAudio.currentTime = (seekSlider.value / 100) * localAudio.duration;
+      } else if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
+        try {
+          const total = ytPlayer.getDuration() || 0;
+          const targetSec = (seekSlider.value / 100) * total;
+          ytPlayer.seekTo(targetSec, true);
+        } catch (e) {}
+      }
     };
   }
 
@@ -635,15 +910,6 @@ export function initAudioUI() {
     if (musicPlayerPanelEl && musicPlayerPanelEl.style.display !== 'none' && !musicPlayerPanelEl.contains(e.target) && e.target !== musicBtnEl) {
       musicPlayerPanelEl.style.display = 'none';
     }
-  });
-
-  // Global user interaction listener to unlock audio (only if authenticated)
-  ['click', 'touchstart', 'keydown'].forEach(evt => {
-    document.addEventListener(evt, () => {
-      if (!userInteracted && isAuth()) {
-        unlockAudio();
-      }
-    }, { once: true });
   });
 }
 
@@ -670,5 +936,6 @@ window.BGM_PLAYLIST = BGM_PLAYLIST;
 window.RETRO_SYNTH_TRACKS = RETRO_SYNTH_TRACKS;
 window.playRetroSynthTrack = playRetroSynthTrack;
 window.stopRetroSynthTrack = stopRetroSynthTrack;
+window.getLocalAudio = getLocalAudio;
 
 
