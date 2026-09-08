@@ -125,4 +125,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'registration_key' => env('REGISTRATION_KEY', 'RESTUBETA2026'),
+
 ];

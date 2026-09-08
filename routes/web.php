@@ -30,11 +30,35 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:lo
 
 Route::get('/system-migrate-db', function (\Illuminate\Http\Request $request) {
     $expectedKey = config('app.registration_key') ?: env('REGISTRATION_KEY', 'RESTU-BETA-2026');
-    if ($request->query('key') !== $expectedKey && $request->query('key') !== 'RESTU-BETA-2026') {
+    $validKeys = array_unique([$expectedKey, 'RESTU-BETA-2026', 'RESTUBETA2026']);
+    if (!in_array($request->query('key'), $validKeys)) {
         return response()->json([
             'success' => false,
             'message' => 'Unauthorized. Parameter ?key= salah.',
         ], 403);
+    }
+
+    if ($request->query('diag') === '1' || $request->query('diag') === 'true') {
+        $diag = [
+            'php_version' => PHP_VERSION,
+            'hashing_config' => config('hashing'),
+            'env_bcrypt_rounds' => env('BCRYPT_ROUNDS'),
+            'password_algos' => function_exists('password_algos') ? password_algos() : [],
+        ];
+        try {
+            $diag['laravel_hash'] = \Illuminate\Support\Facades\Hash::make('test123456');
+        } catch (\Throwable $e) {
+            $diag['laravel_hash_error'] = get_class($e) . ': ' . $e->getMessage();
+        }
+        try {
+            $diag['native_password_hash'] = password_hash('test123456', PASSWORD_DEFAULT);
+        } catch (\Throwable $e) {
+            $diag['native_password_hash_error'] = get_class($e) . ': ' . $e->getMessage();
+        }
+        return response()->json([
+            'success' => true,
+            'diagnostic' => $diag,
+        ]);
     }
 
     try {

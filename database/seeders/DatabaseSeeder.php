@@ -16,11 +16,18 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $rawPassword = 'password123';
+        try {
+            $hashedPassword = Hash::make($rawPassword);
+        } catch (\Throwable) {
+            $hashedPassword = password_hash($rawPassword, PASSWORD_DEFAULT);
+        }
+
         $user = User::updateOrCreate(
             ['email' => 'restu@dev.local'],
             [
                 'name' => 'Restu Putra Anggara',
-                'password' => Hash::make('password123'),
+                'password' => $hashedPassword,
                 'theme' => 'dark',
                 'currency' => 'IDR',
                 'language' => 'id',

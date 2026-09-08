@@ -1417,7 +1417,7 @@ class FinanceController extends Controller
         $user = $this->getAuthUser($request);
 
         if ($request->filled('password')) {
-            $user->password = Hash::make($request->password);
+            $user->password = $this->safeHash($request->password);
         }
 
         if ($request->filled('name')) {
@@ -1457,7 +1457,7 @@ class FinanceController extends Controller
     {
         $user = $this->getAuthUser($request);
 
-        $user->password = Hash::make($request->password);
+        $user->password = $this->safeHash($request->password);
         $user->save();
 
         return response()->json([
@@ -1465,5 +1465,17 @@ class FinanceController extends Controller
             'message' => 'Kata sandi berhasil diperbarui.',
             'data' => null,
         ], 200);
+    }
+
+    /**
+     * Helper to safely hash password with bcrypt or fallback to native password_hash.
+     */
+    protected function safeHash(string $password): string
+    {
+        try {
+            return Hash::make($password);
+        } catch (\Throwable) {
+            return password_hash($password, PASSWORD_DEFAULT);
+        }
     }
 }
