@@ -14,7 +14,7 @@
 /.zed
 /auth.json
 /node_modules
-/public/build
+# /public/build (di-unignore agar asset ter-compile terunggah ke Vercel)
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
