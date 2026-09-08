@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   @vite(['resources/css/app.css', 'resources/js/app.js'])
-  <link rel="stylesheet" href="{{ asset('style.css?v=14') }}">
+  <link rel="stylesheet" href="{{ asset('style.css?v=16') }}">
   <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
   <meta name="theme-color" content="#0d1417">
   <meta name="mobile-web-app-capable" content="yes">
@@ -374,6 +374,6 @@
   <script src="{{ asset('qrcode.min.js') }}"></script>
   <!-- YouTube IFrame API -->
   <script src="https://www.youtube.com/iframe_api"></script>
-  <script type="module" src="{{ asset('js/app.js') }}"></script>
+  <script type="module" src="{{ asset('js/app.js?v=16') }}"></script>
 </body>
 </html>

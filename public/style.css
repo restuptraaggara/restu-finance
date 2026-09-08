@@ -2405,6 +2405,29 @@ body[data-theme="special"] ::-webkit-scrollbar-thumb {
 
 /* Mobile Screens (max-width: 600px) */
 @media (max-width: 600px) {
+  .top-actions {
+    gap: 6px;
+  }
+  .theme-switch-group {
+    padding: 2px;
+    gap: 2px;
+  }
+  .theme-mode-btn {
+    padding: 5px 7px;
+  }
+  .music-btn-label,
+  .chat-btn-label,
+  .theme-btn-label {
+    display: none;
+  }
+  .chat-top-btn,
+  #chatFabBtn {
+    padding: 5px 8px;
+  }
+  #musicBtn {
+    padding: 5px 8px;
+  }
+
   .sidebar {
     position: fixed;
     bottom: 0;

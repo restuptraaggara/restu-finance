@@ -1491,8 +1491,20 @@ export function initGlobalListeners() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js')
-        .then(() => {})
+        .then((reg) => {
+          if (typeof reg.update === 'function') {
+            reg.update();
+          }
+        })
         .catch(err => console.warn('[PWA] Service Worker registration failed:', err));
+    });
+
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
     });
   }
 
