@@ -5,11 +5,11 @@
   },
   "routes": [
     {
-      "src": "/(build|css|js|images|icons|fonts)/(.*)",
+      "src": "/(build|css|js|images|icons|fonts|audio)/(.*)",
       "dest": "/public/$1/$2"
     },
     {
-      "src": "/(.*\\.(css|js|svg|png|jpg|jpeg|gif|ico|webmanifest|json|woff|woff2|ttf|txt))",
+      "src": "/(.*\\.(css|js|svg|png|jpg|jpeg|gif|ico|webmanifest|json|woff|woff2|ttf|txt|mp3|wav|ogg))",
       "dest": "/public/$1"
     },
     {

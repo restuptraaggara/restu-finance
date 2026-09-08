@@ -83,6 +83,11 @@
           <button class="icon-btn notification" id="notifBtn" aria-label="Notifications" title="Notifikasi Keuangan & Status">
             <span class="card-suit-icon">♧</span><i id="notifBadge"></i>
           </button>
+          <button class="icon-btn chat-top-btn" id="chatFabBtn" title="Hubungi Admin / Live Support" aria-label="Buka Live Chat">
+            <span class="chat-fab-icon" id="chatFabIcon">💬</span>
+            <span class="chat-btn-label">Chat</span>
+            <span class="chat-fab-badge" id="chatFabBadge" style="display: none;">0</span>
+          </button>
           <button class="avatar top-avatar" id="topAvatar" title="Buka Pengaturan Akun" aria-label="Profil & Pengaturan">RP</button>
           <button class="icon-btn logout-top-btn" id="topbarLogoutBtn" title="Keluar dari akun (Logout)" aria-label="Keluar">🚪</button>
         </div>
@@ -150,6 +155,29 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Live Chat Dropdown Panel -->
+      <div class="chat-popup" id="chatPopup" style="display: none;">
+        <div class="chat-header">
+          <div class="chat-header-info">
+            <span class="chat-status-dot online"></span>
+            <div>
+              <strong>Live Support & Keluhan</strong>
+              <small>Admin Restu Finance</small>
+            </div>
+          </div>
+          <button class="chat-header-close" id="chatCloseBtn" title="Tutup Chat">✕</button>
+        </div>
+        <div class="chat-messages" id="chatMessagesList">
+          <div class="chat-loading-hint">Memuat percakapan...</div>
+        </div>
+        <form class="chat-input-form" id="chatInputForm">
+          <input type="text" id="chatInputField" placeholder="Tulis pesan atau keluhan..." maxlength="2000" autocomplete="off" required>
+          <button type="submit" class="chat-send-btn" id="chatSendBtn" title="Kirim Pesan">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          </button>
+        </form>
       </div>
 
       <section class="content" id="app">
@@ -338,36 +366,6 @@
   <!-- YouTube Player for Special Mode BGM -->
   <div id="ytPlayerWrap" class="yt-player-wrap">
     <div id="ytPlayer"></div>
-  </div>
-
-  <!-- Floating Client Live Chat Widget -->
-  <div class="client-chat-widget" id="clientChatWidget">
-    <button class="chat-fab" id="chatFabBtn" title="Hubungi Admin / Live Support" aria-label="Buka Live Chat">
-      <span class="chat-fab-icon" id="chatFabIcon">💬</span>
-      <span class="chat-fab-badge" id="chatFabBadge" style="display: none;">0</span>
-    </button>
-
-    <div class="chat-popup" id="chatPopup" style="display: none;">
-      <div class="chat-header">
-        <div class="chat-header-info">
-          <span class="chat-status-dot online"></span>
-          <div>
-            <strong>Live Support & Keluhan</strong>
-            <small>Admin Restu Finance</small>
-          </div>
-        </div>
-        <button class="chat-header-close" id="chatCloseBtn" title="Tutup Chat">✕</button>
-      </div>
-      <div class="chat-messages" id="chatMessagesList">
-        <div class="chat-loading-hint">Memuat percakapan...</div>
-      </div>
-      <form class="chat-input-form" id="chatInputForm">
-        <input type="text" id="chatInputField" placeholder="Tulis pesan atau keluhan..." maxlength="2000" autocomplete="off" required>
-        <button type="submit" class="chat-send-btn" id="chatSendBtn" title="Kirim Pesan">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-        </button>
-      </form>
-    </div>
   </div>
 
   <div class="toast" id="toast">Transaksi tersimpan</div>

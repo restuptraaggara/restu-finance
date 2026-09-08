@@ -205,6 +205,14 @@ export function initClientChat() {
     };
   }
 
+  // Tutup popup chat saat klik di luar area popup
+  document.addEventListener('click', (e) => {
+    const popup = document.getElementById('chatPopup');
+    if (clientChatOpen && popup && !popup.contains(e.target) && e.target !== fabBtn && !fabBtn?.contains(e.target)) {
+      closeClientChat();
+    }
+  });
+
   // Polling unread badge setiap 25 detik di latar belakang
   if (clientUnreadPollingTimer) clearInterval(clientUnreadPollingTimer);
   clientUnreadPollingTimer = setInterval(() => {
