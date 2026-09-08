@@ -3,13 +3,17 @@
   "framework": null,
   "functions": {
     "api/index.php": {
-      "runtime": "vercel-php@0.7.2"
+      "runtime": "vercel-php@0.7.3"
     }
   },
   "routes": [
     {
-      "src": "/(css|js|images|fonts|build)/(.*)",
+      "src": "/(build|css|js|images|icons|fonts)/(.*)",
       "dest": "/public/$1/$2"
+    },
+    {
+      "src": "/(.*\\.(css|js|svg|png|jpg|jpeg|gif|ico|webmanifest|json|woff|woff2|ttf|txt))",
+      "dest": "/public/$1"
     },
     {
       "src": "/(.*)",
