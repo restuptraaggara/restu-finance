@@ -13,4 +13,8 @@ if (isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL']) || getenv('VERCEL')) {
     $_ENV['LOG_CHANNEL'] = 'stderr';
 }
 
+// Ensure Symfony / Laravel does not treat /api directory as base URL
+$_SERVER['SCRIPT_NAME'] = '/index.php';
+$_SERVER['SCRIPT_FILENAME'] = __DIR__ . '/../public/index.php';
+
 require __DIR__ . '/../public/index.php';
